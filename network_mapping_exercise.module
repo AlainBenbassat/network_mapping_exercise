@@ -293,9 +293,16 @@ function network_mapping_exercise_contact_form_submit($form, &$form_state) {
     foreach ($helper->agreeDisagreeQuestions as $questionKey => $questionTitle) {
       $tagIdToSet = $form_state['values'][$questionKey];
       if ($tagIdToSet != 0) {
-        $disagreeId = $helper->getTagId($questionKey, 'Disagrees with us');
-        $neutralId = $helper->getTagId($questionKey, 'Neutral/Undecided');
-        $agreeId = $helper->getTagId($questionKey, 'Agrees with us');
+        if ($tagIdToSet == 46) {
+          $disagreeId = $helper->getTagId($questionKey, 'Anti organic');
+          $neutralId = $helper->getTagId($questionKey, 'Neutral/Undecided');
+          $agreeId = $helper->getTagId($questionKey, 'Pro organic');
+        }
+        else {
+          $disagreeId = $helper->getTagId($questionKey, 'Disagrees with us');
+          $neutralId = $helper->getTagId($questionKey, 'Neutral/Undecided');
+          $agreeId = $helper->getTagId($questionKey, 'Agrees with us');
+        }
 
         // see which tag we have to unset
         $tagsToUnset = [];
