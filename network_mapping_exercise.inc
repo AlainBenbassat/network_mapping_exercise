@@ -1,6 +1,8 @@
 <?php
 
 class NetworkMappingHelper {
+  private $expirationDate = '2020-05-29'; // last date the form can be filled in
+
   public $allowedGroups = [
     'sep-1' => 'For the European Parliament they include:',
       270 => 'AGRI (Agriculture & Rural Development) - Committee members and substitutes',
@@ -207,7 +209,11 @@ class NetworkMappingHelper {
     $errorMessage = 'You are not allowed to access this page.';
 
     // see if the contact is logged in
-    if ($user->uid) {
+    // check the date
+    if (date('Y-m-d') > $this->expirationDate) {
+      $errorMessage = "You cannot fill in the form anymore. The expiration date was {$this->expirationDate}.";
+    }
+    elseif ($user->uid) {
       // check the roles
       foreach ($user->roles as $k => $role) {
         if ($role == 'administrator' || $role == 'CiviCRM') {
