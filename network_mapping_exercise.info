@@ -1,0 +1,6 @@
+name = Network Mapping Exercise
+description = Allows selected people to review contacts from specific CiviCRM groups
+core = 7.x
+package = CiviCRM
+
+files[] = network_mapping_exercise.inc

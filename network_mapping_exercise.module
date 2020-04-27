@@ -1,0 +1,330 @@
+<?php
+/**
+ * There are 3 pages/forms:
+ * 1) main page: presents instructions and a list of groups
+ * 2) group contacts page: presents a list of contacts in the chosen group
+ * 3) contact details form: contact details and submit button
+ */
+
+function network_mapping_exercise_menu() {
+  $items = [];
+
+  // main page
+  $items['network_mapping_exercise'] = [
+    'title' => 'Network Mapping Exercise',
+    'page callback' => 'network_mapping_exercise_page',
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  // group contacts page
+  $items['network_mapping_exercise/group'] = [
+    'title' => 'Network Mapping Exercise - Groups',
+    'page callback' => 'network_mapping_exercise_group_page',
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  // contact detail page
+  $items['network_mapping_exercise/contact'] = [
+    'title' => 'Network Mapping Exercise - Contact Details',
+    'page callback' => 'network_mapping_exercise_contact_page',
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  return $items;
+}
+
+/**
+ * Main Page
+ */
+function network_mapping_exercise_page() {
+  try {
+    $html = '<p>You are about to start the IFOAM EU Network Mapping Exercise.</p>' .
+      '<p>This exercise serves to map your relationships with the members of the European Parliament and the European Commission as well as their attitude towards organic farming and opinion on the topics we are working on.</p>' .
+      '<p>It will help us to better defend your interests. By getting a more detailed overview of our network, we will be able to better target key policymakers, and our communication to them. It will also help us to better target our communication efforts to make sure we reach our Vision 2030.</p>' .
+      '<p>To be as efficient as possible, we have limited the selection to the European Parliament Committees and Commission Cabinets that are most important to our work.</p>';
+
+    // make sure we are allowed to see this page
+    $helper = new NetworkMappingHelper('main');
+
+    // add the user name
+    $html = '<p>Welcome ' . $helper->currentUserName . ',</p>' . $html;
+
+    $inUL = FALSE;
+    $includeCountry = 'no';
+    foreach ($helper->allowedGroups as $groupId => $groupName) {
+      if (strpos($groupId, 'sep') === 0) {
+        // this is a section
+        // check if we have to close the previous ul
+        if ($inUL) {
+          $html .= "</ul>";
+        }
+        $html .= "<h2>$groupName</h2>";
+        $html .= "<ul>";
+        $inUL = TRUE;
+
+        if (strpos($groupName, 'European Parliament') === FALSE) {
+          $includeCountry = 'no';
+        }
+        else {
+          $includeCountry = 'yes';
+        }
+      }
+      elseif (strpos($groupId, '-') === 0) {
+        // this group is not complete yet, so no hyperlink
+        $html .= "<li>$groupName [NOT UPDATED YET]</li>";
+      }
+      else {
+        // this is an actual group
+        $html .= "<li><a href=\"network_mapping_exercise/group?group_id=$groupId&include_country=$includeCountry\">$groupName</a></li>";
+      }
+    }
+    $html .= "</ul>";
+
+    // outro text
+    $html .= '<p>When clicking on one of these groups, you will see an overview with all members of the respective Committee or Cabinet.</p>' .
+      '<p>Please take your time to go through the members of the Committees and Cabinets to provide us with your valuable information.</p>' .
+      '<p>Your time and effort are very much appreciated!</p>' .
+      '<p><strong>Your IFOAM EU Team</strong></p>';
+  }
+  catch (Exception $e) {
+    drupal_set_message($e->getMessage(), 'error');
+  }
+
+  return $html;
+}
+
+/**
+ * Group Contacts Page
+ */
+function network_mapping_exercise_group_page() {
+  try {
+    // make sure we are allowed to see this page
+    $helper = new NetworkMappingHelper('group_contacts');
+
+    drupal_set_title($helper->allowedGroups[$helper->groupId]);
+
+    $html = '';
+    if ($helper->includeCountry == 'yes') {
+      $html =
+        '<p>As you can see below, the members of the Committee are sorted by country (first column) and name (second column). You can either search for a member by<p>'
+        . '<ul>'
+        . '<li><strong>country</strong>: scroll through the list to the country you are searching for or press "Ctrl + F" (on Windows) or "CMD+F" (on Mac) to search for the country you want to find,</li>'
+        . '<li><strong>name</strong>: scroll through the list to the name you are searching for or press "Ctrl + F" (on Windows) or "CMD+F" (on Mac) to search for the name you want to find.</li>'
+        . '</ul>';
+    }
+    else {
+      $html =
+        '<p>As you can see below, the members of the Cabinet are sorted by name. You can either search for a member by<p>'
+        . '<ul>'
+        . '<li>scrolling through the list to the name you are searching for or</li>'
+        . '<li>pressing "Ctrl + F" (on Windows) or "CMD+F" (on Mac) to search for the name you want to find.</li>'
+        . '</ul>';
+    }
+
+    $html .=
+      '<p>When clicking on the name of a member (in green), you will be asked to indicate the following information:<p>'
+      . '<ul>'
+      . '<li>your relationship level (if applicable),</li>'
+      . '<li>their attitude towards organic (if known),</li>'
+      . '<li>their opinion on the topics we are working on (if known).</li>'
+      . '</ul>';
+
+    $html .= '<p>You can also open the member in a new tab by right-clicking on the name and choosing "Open Link in New Tab".</p>';
+    $html .= '<p>Please fill in the information for everyone you know.</p>';
+
+    $dao = $helper->getGroupContacts($helper->groupId);
+    $html .= '<table>';
+    $html .= '<tr>';
+
+    if ($helper->includeCountry == 'yes') {
+      $html .= '<th>Country</th>';
+    }
+
+    $html .= '<th>Name</th>';
+    $html .= '</tr>';
+
+    while ($dao->fetch()) {
+      $html .= '<tr>';
+
+      if ($helper->includeCountry == 'yes') {
+        $html .= '<td>' . $dao->country . '</td>';
+      }
+
+      $html .= '<td><a href="contact?group_id=' . $helper->groupId . '&contact_id=' . $dao->id . '&cid=' . $helper->cid . '&cs=' . $helper->cs . '&include_country=' . $helper->includeCountry . '">'
+        . $dao->last_name . ', ' . $dao->first_name . '</a></td>';
+      $html .= '</tr>';
+    }
+    $html .= '</table>';
+
+
+    $html .= '<p><br><a href="../network_mapping_exercise">&lt; Back</p>';
+  }
+  catch (Exception $e) {
+    drupal_set_message($e->getMessage(), 'error');
+  }
+
+  return $html;
+}
+
+/**
+ * Contact Details Page
+ */
+function network_mapping_exercise_contact_page() {
+  return drupal_get_form('network_mapping_exercise_contact_form');
+}
+
+function network_mapping_exercise_contact_form($form, &$form_state) {
+  try {
+    // make sure we are allowed to see this page
+    $helper = new NetworkMappingHelper('contact_details');
+
+    // show name of the contact in the title
+    drupal_set_title($helper->contactName);
+
+    $form['intro'] = [
+      '#markup' =>
+          '<p>Please fill in the following information for this member:<p>'
+          . '<ul>'
+          . '<li>your relationship level (if applicable),</li>'
+          . '<li>their attitude towards organic (if known),</li>'
+          . '<li>their opinion on the topics we are working on (if known).</li>'
+          . '</ul>'
+          . '<p>Please note that the information on your relationship with the member as well as the members\' opinion and attitude currently saved in our database will be ticked by default. Feel free to correct this information if necessary.</p>'
+          . '<p>Once you have filled in all information, please make sure to click "Submit" at the bottom of the page to save your changes in our database. </p>'
+          . '<p>In case you want to go back to the previous page without saving your changes, please click on "Cancel and go back".</p>'
+    ];
+
+    // relationship with the person
+    $form['relationship_level'] = [
+      '#type' => 'radios',
+      '#title' => 'How well do you know ' . $helper->contactName . '?',
+      '#options' => [
+        0 => 'Not at all or no regular contact',
+        $helper->relationshipBasic => 'Basic relationship (you are in contact within normal course of work)',
+        $helper->relationshipMedium => 'Medium relationship (you can call them and they will take your call or call you back)',
+        $helper->relationshipStrong => 'Strong relationship (you have dinner together at each other\'s house)',
+      ],
+      '#required' => TRUE,
+    ];
+
+    // questions
+    foreach ($helper->agreeDisagreeQuestions as $questionKey => $questionTitle) {
+      // get the corresponding tag id's
+      if ($questionKey == 46) {
+        // exception for attitude towards organic
+        $disagreeId = $helper->getTagId($questionKey, 'Anti organic');
+        $neutralId = $helper->getTagId($questionKey, 'Neutral/Undecided');
+        $agreeId = $helper->getTagId($questionKey, 'Pro organic');
+
+        $form[$questionKey] = [
+          '#type' => 'radios',
+          '#title' => 'What is the attitude of ' . $helper->contactName . ' towards <strong>' . $questionTitle . '</strong>?',
+          '#options' => [
+            0 => 'I don\'t know',
+            $disagreeId => 'Anti organic',
+            $neutralId => 'Neutral/Undecided',
+            $agreeId => 'Pro organic',
+          ],
+          '#default_value' => $helper->getDefaultTagId($disagreeId, $neutralId, $agreeId),
+          '#required' => TRUE,
+        ];
+      }
+      else {
+        $disagreeId = $helper->getTagId($questionKey, 'Disagrees with us');
+        $neutralId = $helper->getTagId($questionKey, 'Neutral/Undecided');
+        $agreeId = $helper->getTagId($questionKey, 'Agrees with us');
+
+        $form[$questionKey] = [
+          '#type' => 'radios',
+          '#title' => 'What is the opinion of ' . $helper->contactName . ' on <strong>' . $questionTitle . '</strong>?',
+          '#options' => [
+            0 => 'I don\'t know',
+            $disagreeId => 'Disagrees with us',
+            $neutralId => 'Neutral/Undecided',
+            $agreeId => 'Agrees with us',
+          ],
+          '#default_value' => $helper->getDefaultTagId($disagreeId, $neutralId, $agreeId),
+          '#required' => TRUE,
+        ];
+      }
+    }
+
+    // remark
+    /*
+    $form['extra_info'] = [
+      '#type' => 'textarea',
+      '#title' => 'Anything else you want to mention about ' . $helper->contactName . '?',
+    ];
+    */
+
+    // add submit button
+    $form['submit'] = [
+      '#type' => 'submit',
+      '#value' => 'Submit',
+      '#submit' => ['network_mapping_exercise_contact_form_submit'],
+    ];
+
+    // cancel link
+    $form['cancel'] = [
+      '#markup' => '<p><br><a href="group?group_id=' . $helper->groupId . '&cid=' . $helper->cid . '&cs=' . $helper->cs . '&include_country=' . $helper->includeCountry . '">&lt; Cancel and go back</a></p>',
+    ];
+
+  }
+  catch (Exception $e) {
+    drupal_set_message($e->getMessage(), 'error');
+  }
+
+  return $form;
+}
+
+function network_mapping_exercise_contact_form_submit($form, &$form_state) {
+  try {
+    // make sure we are allowed to see this page
+    $helper = new NetworkMappingHelper('contact_details');
+
+    // save the relationship level
+    $relationshipLevel = $form_state['values']['relationship_level'];
+    $helper->updateRelationshipLevel($relationshipLevel);
+
+    // save the other questions related to the tags (the key is the parent tag)
+    foreach ($helper->agreeDisagreeQuestions as $questionKey => $questionTitle) {
+      $tagIdToSet = $form_state['values'][$questionKey];
+      if ($tagIdToSet != 0) {
+        $disagreeId = $helper->getTagId($questionKey, 'Disagrees with us');
+        $neutralId = $helper->getTagId($questionKey, 'Neutral/Undecided');
+        $agreeId = $helper->getTagId($questionKey, 'Agrees with us');
+
+        // see which tag we have to unset
+        $tagsToUnset = [];
+        if ($tagIdToSet != $disagreeId) {
+          $tagsToUnset[] = $disagreeId;
+        }
+        if ($tagIdToSet != $neutralId) {
+          $tagsToUnset[] = $neutralId;
+        }
+        if ($tagIdToSet != $agreeId) {
+          $tagsToUnset[] = $agreeId;
+        }
+
+        $helper->updateAgreeDisagree($tagIdToSet, $tagsToUnset);
+      }
+    }
+
+    // save the note
+    /*
+    $note = $form_state['values']['extra_info'];
+    if ($note) {
+      $helper->addNoteToContact($note);
+    }
+    */
+
+    drupal_set_message('The information about ' . $helper->getContactNameFromId($helper->contactId) . ' has been updated.', 'status');
+    drupal_goto("network_mapping_exercise/group", ['query' => ['group_id' => $helper->groupId, 'cs' => $helper->cs, 'cid' => $helper->cis, 'include_country' => $helper->includeCountry]]);
+  }
+  catch (Exception $e) {
+    drupal_set_message($e->getMessage(), 'error');
+  }
+}
