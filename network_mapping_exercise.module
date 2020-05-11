@@ -329,7 +329,7 @@ function network_mapping_exercise_contact_form_submit($form, &$form_state) {
     */
 
     drupal_set_message('The information about ' . $helper->getContactNameFromId($helper->contactId) . ' has been updated.', 'status');
-    drupal_goto("network_mapping_exercise/group", ['query' => ['group_id' => $helper->groupId, 'cs' => $helper->cs, 'cid' => $helper->cis, 'include_country' => $helper->includeCountry]]);
+    drupal_goto("network_mapping_exercise/group", ['query' => ['group_id' => $helper->groupId, 'cs' => $helper->cs, 'cid' => $helper->cid, 'include_country' => $helper->includeCountry]]);
   }
   catch (Exception $e) {
     drupal_set_message($e->getMessage(), 'error');
