@@ -78,7 +78,7 @@ function network_mapping_exercise_page() {
       }
       else {
         // this is an actual group
-        $html .= "<li><a href=\"network_mapping_exercise/group?group_id=$groupId&include_country=$includeCountry\">$groupName</a></li>";
+        $html .= "<li><a href=\"network_mapping_exercise/group?group_id=$groupId" . '&cid=' . $helper->cid . '&cs=' . $helper->cs . "&include_country=$includeCountry\">$groupName</a></li>";
       }
     }
     $html .= "</ul>";
